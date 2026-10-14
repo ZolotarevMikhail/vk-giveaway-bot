@@ -19,13 +19,16 @@ class VkApiClient:
         self.client = httpx.AsyncClient(timeout=REQUEST_TIMEOUT)
 
     async def close(self):
+        """Закрывает HTTP-соединения (при аккуратной остановке бота)."""
         await self.client.aclose()
 
     async def _call(self, method: str, **params):
         """Один вызов к VK API. Возвращает response или None при ошибке."""
         params.update({"access_token": VK_API_TOKEN, "v": VK_API_VERSION})
         try:
-            resp = await self.client.post(API_URL.format(method=method), data=params)
+            resp = await self.client.post(
+                API_URL.format(method=method), data=params
+            )
             data = resp.json()
         except Exception as exc:
             logger.error("VK API %s: сетевая ошибка %s", method, exc)
@@ -33,7 +36,10 @@ class VkApiClient:
 
         if "error" in data:
             err = data["error"]
-            logger.error("VK API %s: ошибка %s — %s", method, err.get("error_code"), err.get("error_msg"))
+            logger.error(
+                "VK API %s: ошибка %s — %s",
+                method, err.get("error_code"), err.get("error_msg"),
+            )
             return None
         return data.get("response")
 
@@ -41,7 +47,9 @@ class VkApiClient:
 
     async def is_member(self, group: str, user_id: int) -> bool | None:
         """Подписан ли user_id на сообщество group (короткое имя или id).
-        None — не удалось проверить (сбой сети/API)."""
+
+        None — не удалось проверить (сбой сети или API).
+        """
         resp = await self._call(
             "groups.isMember", group=group, user_id=user_id
         )
@@ -62,7 +70,9 @@ class VkApiClient:
 
     # ---------- Сообщения ----------
 
-    async def send(self, user_id: int, text: str, keyboard: dict | None = None) -> bool:
+    async def send(
+        self, user_id: int, text: str, keyboard: dict | None = None
+    ) -> bool:
         """Отправляет сообщение участнику от имени сообщества."""
         params = {
             "user_id": user_id,

@@ -15,11 +15,14 @@ VK_API_VERSION = os.getenv("VK_API_VERSION", "5.199")
 
 # ID админов через запятую: только они управляют розыгрышем
 ADMIN_IDS = {
-    int(x) for x in os.getenv("ADMIN_IDS", "").replace(" ", "").split(",") if x
+    int(admin_id) for admin_id
+    in os.getenv("ADMIN_IDS", "").replace(" ", "").split(",") if admin_id
 }
 
+# Подробные логи (1 / true / yes)
 DEBUG = os.getenv("DEBUG", "").lower() in ("1", "true", "yes")
 
+# Таймаут HTTP-запросов к ВК, секунды
 REQUEST_TIMEOUT = float(os.getenv("REQUEST_TIMEOUT", "15"))
 
 

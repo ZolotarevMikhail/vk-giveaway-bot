@@ -2,8 +2,8 @@
 Запуск:  python3 test_local.py
 """
 
+import asyncio
 import os
-import sqlite3
 import sys
 
 # Тестовый .env-набор, чтобы не трогать реальный .env
@@ -38,13 +38,14 @@ class FakeVk:
 
 
 async def run_tests():
+    """Сценарий целиком: участие, сообщества, победитель, сброс, права."""
     bot = GiveawayBot(FakeVk())
     ok = True
 
-    def check(name, cond):
+    def check(name, condition):
         nonlocal ok
-        print(("✅" if cond else "❌"), name)
-        ok = ok and cond
+        print(("✅" if condition else "❌"), name)
+        ok = ok and condition
 
     # 1. Участие
     text, kb = await bot.handle(1, "Участвовать")
@@ -59,11 +60,14 @@ async def run_tests():
     text, _ = await bot.handle(2, "Участвовать")
     check("Подписанный на сообщество участвует", "Ты в игре" in text)
     text, _ = await bot.handle(3, "Участвовать")
-    check("Неподписанный получает отказ с названием сообщества", "подписан" in text)
+    check(
+        "Неподписанный получает отказ с названием сообщества",
+        "подписан" in text,
+    )
 
     # 4. Участники не теряются
-    rid, _ = db.current_round()
-    check("В базе 2 участника", len(db.participants(rid)) == 2)
+    round_id, _ = db.current_round()
+    check("В базе 2 участника", len(db.participants(round_id)) == 2)
 
     # 5. Победитель
     text, _ = await bot.handle(777, "/победитель")
@@ -71,8 +75,11 @@ async def run_tests():
 
     # 6. Сброс
     text, _ = await bot.handle(777, "/сброс")
-    new_rid, _ = db.current_round()
-    check("Сброс создаёт новый пустой раунд", "сброшен" in text and not db.participants(new_rid))
+    new_round_id, _ = db.current_round()
+    check(
+        "Сброс создаёт новый пустой раунд",
+        "сброшен" in text and not db.participants(new_round_id),
+    )
 
     # 7. Сообщества: добавить/список/удалить
     await bot.handle(777, "/добавить vk.com/new_club")
@@ -88,10 +95,10 @@ async def run_tests():
     check("До окончания победителя не выбирает", "ещё идёт" in text)
 
     # 9. Не-админ не может управлять
-    rid_before, _ = db.current_round()
-    text, _ = await bot.handle(555, "/сброс")
-    rid_after, _ = db.current_round()
-    check("Не-админ не сбрасывает раунд", rid_before == rid_after)
+    round_id_before, _ = db.current_round()
+    await bot.handle(555, "/сброс")
+    round_id_after, _ = db.current_round()
+    check("Не-админ не сбрасывает раунд", round_id_before == round_id_after)
 
     os.remove(DB)
     print("\n" + ("ВСЕ ТЕСТЫ ПРОШЛИ ✅" if ok else "ЕСТЬ ОШИБКИ ❌"))
@@ -99,4 +106,4 @@ async def run_tests():
 
 
 if __name__ == "__main__":
-    sys.exit(__import__("asyncio").run(run_tests()))
+    sys.exit(asyncio.run(run_tests()))
